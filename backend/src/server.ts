@@ -1,15 +1,13 @@
 import express from "express";
 import cors from "cors";
-import pacienteRoutes from "./routes/paciente";
+import usuarioRoutes from "./routes/usuario";
 
 const app = express();
-const PORT = 3333;
-
 app.use(cors());
 app.use(express.json());
-app.use("/uploads", express.static("uploads")); // Para servir os arquivos estáticos
-app.use("/api", pacienteRoutes);
 
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
+app.use("/api", usuarioRoutes);
+
+app.listen(3333, () => {
+  console.log("✅ Backend rodando em http://localhost:3333");
 });
