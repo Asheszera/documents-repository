@@ -1,0 +1,25 @@
+Délio RPM - Indicação
+
+HUB de visualizações, materiais cocorone.
+
+Visão global de maps onde tem os PDV com os materiais corona.
+
+Quer saber o que está acontecendo nas vendas está atrelado com o perfil da região socioeconomico. idade, renda, tipos de estabelecimentos.
+
+Cruzar informações ao redor do mundo se o que é praticado está acompanhando a marca.
+
+foco em países que ainda não tem vendas, poucas vendas.
+
+lista de países que serão foco.
+
+utilizar empresas da região pelo google ou crawlers de outras soluções para definir informações sem precisar pegar os dados censitários.
+
+1000 estabelecimentos ao redor do mundo. Locais com população mais baixa.
+
+Trabalhar junto, na hora de desenvolver.
+
+Custo de customização, criar score, métricas e rodar.
+
+vai mandar NDA, lista base dos países, apresentação do projeto.
+
+projeto de 6 meses e renovação de 1 ano depois

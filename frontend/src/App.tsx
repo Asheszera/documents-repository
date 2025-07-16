@@ -18,7 +18,7 @@ const App = () => {
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const filesPerPage = 10;
+  const filesPerPage = 12;
 
   const loadFiles = async () => {
     const res = await fetch("http://localhost:3001/list");
@@ -264,10 +264,9 @@ const App = () => {
 
         {mime ===
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document" && (
-          <div style={styles.textBox}>
-            <strong>Preview do DOCX:</strong>
+          <>
             <DocxPreview filePath={file.path} />
-          </div>
+          </>
         )}
 
         {mime === "application/pdf" && (
@@ -290,10 +289,12 @@ const App = () => {
         )}
 
         {isTextPreview(mime) && mime !== "text/plain" && (
-          <div style={styles.textBox}>
-            <strong>Preview do código:</strong>
+          <>
+            <strong style={{ marginBottom: "0.3rem", fontSize: "0.85rem" }}>
+              Preview do código:
+            </strong>
             <CodePreview filePath={file.path} />
-          </div>
+          </>
         )}
 
         <p style={styles.nameText}>
@@ -355,7 +356,7 @@ const App = () => {
   return (
     <div style={styles.container}>
       <div style={{ maxWidth: "1200px", width: "100%", padding: "2rem" }}>
-        <h1 style={styles.header}>📁 Document Repository</h1>
+        <h1 style={styles.header}>📁 File Repository</h1>
 
         <input
           type="file"
