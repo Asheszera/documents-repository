@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import TextPreview from "./TextPreview"; // ✅ importa seu componente
+import TextPreview from "./TextPreview";
 import DocxPreview from "./DocxPreview";
+import CodePreview from "./CodePreview";
 
 type FileData = {
   id: number;
@@ -10,14 +11,20 @@ type FileData = {
   size: number;
 };
 
-const App: React.FC = () => {
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [isSummarizing, setIsSummarizing] = useState(false);
-  const [descriptions, setDescriptions] = useState<Record<number, string>>({});
+const App = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [fileList, setFileList] = useState<FileData[]>([]);
+  const [descriptions, setDescriptions] = useState<Record<number, string>>({});
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const filesPerPage = 10;
+
+  const loadFiles = async () => {
+    const res = await fetch("http://localhost:3001/list");
+    const data = await res.json();
+    setFileList(data);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) setFiles(Array.from(e.target.files));
@@ -25,9 +32,7 @@ const App: React.FC = () => {
 
   const uploadFiles = async () => {
     if (files.length === 0) {
-      alert(
-        "⚠️ Nenhum arquivo selecionado. Por favor, escolha arquivos antes de enviar."
-      );
+      alert("⚠️ Nenhum arquivo selecionado.");
       return;
     }
 
@@ -41,6 +46,12 @@ const App: React.FC = () => {
 
     setFiles([]);
     setCurrentPage(1);
+    loadFiles();
+  };
+
+  const deleteFile = async (id: number) => {
+    if (!window.confirm("Apagar este arquivo?")) return;
+    await fetch(`http://localhost:3001/file/${id}`, { method: "DELETE" });
     loadFiles();
   };
 
@@ -67,7 +78,6 @@ const App: React.FC = () => {
         });
 
         if (!res.ok) throw new Error(`Erro ${res.status}: ${res.statusText}`);
-
         const { descricao } = await res.json();
         resumo = descricao;
         break;
@@ -93,27 +103,6 @@ const App: React.FC = () => {
     setIsSummarizing(false);
   };
 
-  const loadFiles = async () => {
-    try {
-      const response = await fetch("http://localhost:3001/list");
-      const data = await response.json();
-      setFileList(data);
-    } catch (error) {
-      console.error("Erro ao carregar arquivos:", error);
-    }
-  };
-
-  const deleteFile = async (id: number) => {
-    const confirmDelete = window.confirm("Apagar este arquivo?");
-    if (!confirmDelete) return;
-
-    await fetch(`http://localhost:3001/file/${id}`, {
-      method: "DELETE",
-    });
-
-    loadFiles();
-  };
-
   useEffect(() => {
     loadFiles();
   }, []);
@@ -122,8 +111,15 @@ const App: React.FC = () => {
   const startIndex = (currentPage - 1) * filesPerPage;
   const currentFiles = fileList.slice(startIndex, startIndex + filesPerPage);
 
-  const column1 = currentFiles.slice(0, 5);
-  const column2 = currentFiles.slice(5, 10);
+  const isTextPreview = (type: string) =>
+    type.startsWith("text/") ||
+    type.includes("javascript") ||
+    type.includes("typescript") ||
+    type.includes("json") ||
+    type.includes("html") ||
+    type.includes("css") ||
+    type.includes("python") ||
+    type.includes("markdown");
 
   const styles = {
     container: {
@@ -171,13 +167,9 @@ const App: React.FC = () => {
     },
     grid: {
       display: "grid",
-      gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", // ✔ adapta até 4+ colunas conforme largura da tela
+      gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
       gap: "2rem",
       justifyContent: "center",
-    },
-    column: {
-      flex: 1,
-      minWidth: "300px",
     },
     fileItem: {
       backgroundColor: "#1a1a1a",
@@ -186,7 +178,6 @@ const App: React.FC = () => {
       marginBottom: "1.5rem",
       width: "100%",
       minHeight: "380px",
-      height: "auto",
       display: "flex",
       flexDirection: "column" as const,
       justifyContent: "space-between",
@@ -195,7 +186,7 @@ const App: React.FC = () => {
     preview: {
       width: "100%",
       height: "200px",
-      objectFit: "contain" as const, // imagem inteira visível
+      objectFit: "contain" as const,
       backgroundColor: "#000",
       borderRadius: "6px",
       marginBottom: "0.5rem",
@@ -207,11 +198,10 @@ const App: React.FC = () => {
       fontSize: "0.85rem",
       borderRadius: "6px",
       whiteSpace: "pre-wrap" as const,
-      height: "200px", // mesma altura da imagem
-      maxWidth: "100%", // igual à largura do card
+      height: "200px",
       overflowY: "auto" as const,
+      fontFamily: "monospace",
       marginBottom: "0.5rem",
-      display: "block",
     },
     nameText: {
       fontSize: "0.9rem",
@@ -257,119 +247,116 @@ const App: React.FC = () => {
     },
   };
 
-  const renderFile = (file: FileData) => (
-    <div key={file.id} style={styles.fileItem}>
-      {file.type.startsWith("image/") && (
-        <img
-          src={`http://localhost:3001/files/${file.path}`}
-          alt={file.name}
-          style={styles.preview}
-        />
-      )}
-      {file.type ===
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" && (
-        <div style={styles.textBox}>
-          <strong>Preview do DOCX:</strong>
-          <DocxPreview filePath={file.path} />
-        </div>
-      )}
-      {file.type === "application/pdf" && (
-        <iframe
-          src={`http://localhost:3001/files/${file.path}`}
-          style={styles.preview}
-          width="100%"
-          height="200"
-        />
-      )}
-      {file.type.startsWith("video/") && (
-        <video
-          controls
-          src={`http://localhost:3001/files/${file.path}`}
-          style={styles.preview}
-        />
-      )}
-      {file.type === "text/plain" && (
-        <div style={styles.textBox}>
-          <strong>Preview do TXT:</strong>
-          <br />
-          <TextPreview filePath={file.path} />
-        </div>
-      )}
-      {previewImage && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.8)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 9999,
-          }}
-          onClick={() => setPreviewImage(null)}
-        >
+  const renderFile = (file: FileData) => {
+    const fileUrl = `http://localhost:3001/files/${file.path}`;
+    const mime = file.type;
+
+    return (
+      <div key={file.id} style={styles.fileItem}>
+        {mime.startsWith("image/") && (
           <img
-            src={previewImage}
+            src={fileUrl}
+            alt={file.name}
             style={styles.preview}
-            onClick={() => setPreviewImage(previewImage)}
+            onClick={() => setPreviewImage(fileUrl)}
           />
-        </div>
-      )}
+        )}
 
-      <p style={styles.nameText}>
-        <strong>Nome do arquivo:</strong>{" "}
-        {file.name.length > 20 ? file.name.slice(0, 17) + "..." : file.name}
-      </p>
-      <p style={styles.sizeText}>Tamanho: {(file.size / 1024).toFixed(1)} KB</p>
-      <button style={styles.deleteButton} onClick={() => deleteFile(file.id)}>
-        🗑️ Apagar
-      </button>
-      <button
-        onClick={() => summarizeFile(file.id)}
-        disabled={isSummarizing}
-        style={{
-          marginTop: "0.5rem",
-          backgroundColor: isSummarizing ? "#555" : "#4e91ff",
-          border: "none",
-          padding: "0.5rem 1rem",
-          borderRadius: "6px",
-          color: "#fff",
-          cursor: isSummarizing ? "not-allowed" : "pointer",
-          fontSize: "0.85rem",
-          marginRight: "0.5rem",
-          opacity: isSummarizing ? 0.6 : 1,
-        }}
-      >
-        🔎 Resumir
-      </button>
+        {mime ===
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document" && (
+          <div style={styles.textBox}>
+            <strong>Preview do DOCX:</strong>
+            <DocxPreview filePath={file.path} />
+          </div>
+        )}
 
-      {descriptions[file.id] === "__loading__" ? (
-        <p style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "#aaa" }}>
-          ⏳ Gerando resumo com IA...
+        {mime === "application/pdf" && (
+          <iframe
+            src={fileUrl}
+            style={styles.preview}
+            title={`Preview-PDF-${file.id}`}
+          />
+        )}
+
+        {mime.startsWith("video/") && (
+          <video controls src={fileUrl} style={styles.preview} />
+        )}
+
+        {mime === "text/plain" && (
+          <div style={styles.textBox}>
+            <strong>Preview do TXT:</strong>
+            <TextPreview filePath={file.path} />
+          </div>
+        )}
+
+        {isTextPreview(mime) && mime !== "text/plain" && (
+          <div style={styles.textBox}>
+            <strong>Preview do código:</strong>
+            <CodePreview filePath={file.path} />
+          </div>
+        )}
+
+        <p style={styles.nameText}>
+          <strong>Nome do arquivo:</strong>{" "}
+          {file.name.length > 20 ? file.name.slice(0, 17) + "..." : file.name}
         </p>
-      ) : descriptions[file.id]?.startsWith("⚠️") ? (
-        <p
-          style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "#ffcc00" }}
+
+        <p style={styles.sizeText}>
+          Tamanho: {(file.size / 1024).toFixed(1)} KB
+        </p>
+
+        <button style={styles.deleteButton} onClick={() => deleteFile(file.id)}>
+          🗑️ Apagar
+        </button>
+
+        <button
+          onClick={() => summarizeFile(file.id)}
+          disabled={isSummarizing}
+          style={{
+            ...styles.aiButton,
+            backgroundColor: isSummarizing ? "#555" : "#4e91ff",
+            cursor: isSummarizing ? "not-allowed" : "pointer",
+            opacity: isSummarizing ? 0.6 : 1,
+          }}
         >
-          {descriptions[file.id]}
-        </p>
-      ) : descriptions[file.id] ? (
-        <p
-          style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "#00ffcc" }}
-        >
-          <strong>Resumo Gemini:</strong> {descriptions[file.id]}
-        </p>
-      ) : null}
-    </div>
-  );
+          🔎 Resumir
+        </button>
 
+        {descriptions[file.id] === "__loading__" ? (
+          <p
+            style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "#aaa" }}
+          >
+            ⏳ Gerando resumo com IA...
+          </p>
+        ) : descriptions[file.id]?.startsWith("⚠️") ? (
+          <p
+            style={{
+              marginTop: "0.5rem",
+              fontSize: "0.85rem",
+              color: "#ffcc00",
+            }}
+          >
+            {descriptions[file.id]}
+          </p>
+        ) : descriptions[file.id] ? (
+          <p
+            style={{
+              marginTop: "0.5rem",
+              fontSize: "0.85rem",
+              color: "#00ffcc",
+            }}
+          >
+            <strong>Resumo Gemini:</strong> {descriptions[file.id]}
+          </p>
+        ) : null}
+      </div>
+    );
+  };
   return (
     <div style={styles.container}>
-      <div style={{ maxWidth: "1200px", width: "100%" }}>
+      <div style={{ maxWidth: "1200px", width: "100%", padding: "2rem" }}>
         <h1 style={styles.header}>📁 Document Repository</h1>
+
         <input
           type="file"
           multiple
@@ -380,10 +367,7 @@ const App: React.FC = () => {
           Enviar Arquivos
         </button>
 
-        <div style={styles.grid}>
-          <div style={styles.column}>{column1.map(renderFile)}</div>
-          <div style={styles.column}>{column2.map(renderFile)}</div>
-        </div>
+        <div style={styles.grid}>{currentFiles.map(renderFile)}</div>
 
         <div style={styles.pagination}>
           <button
@@ -409,6 +393,35 @@ const App: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {previewImage && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.8)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+          }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <img
+            src={previewImage}
+            alt="Preview"
+            style={{
+              maxWidth: "90%",
+              maxHeight: "90%",
+              borderRadius: "12px",
+              boxShadow: "0 0 20px rgba(255,255,255,0.2)",
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };

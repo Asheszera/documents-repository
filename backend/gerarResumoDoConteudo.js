@@ -11,7 +11,7 @@ async function gerarResumoDoConteudo(caminho) {
     const tipoMime = mime.lookup(caminho) || "";
     const modelo = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    // 🖼️ Imagens — envia por base64
+    // 🖼️ Imagem via base64
     if (tipoMime.startsWith("image/")) {
       const data = fs.readFileSync(caminho);
       const imagem = {
@@ -26,7 +26,7 @@ async function gerarResumoDoConteudo(caminho) {
           {
             parts: [
               {
-                text: "Oque há nessa imagem? sem rodeios nem explicações. Somente a resposta.",
+                text: "O que há nessa imagem? Somente a resposta.",
               },
               imagem,
             ],
@@ -38,7 +38,7 @@ async function gerarResumoDoConteudo(caminho) {
       return (await resposta.text()).trim();
     }
 
-    // 📄 TXT
+    // 📄 TXT direto
     if (tipoMime === "text/plain") {
       const texto = fs.readFileSync(caminho, "utf8").slice(0, 2000);
 
@@ -105,8 +105,28 @@ async function gerarResumoDoConteudo(caminho) {
       return (await resposta.text()).trim();
     }
 
-    // 🚫 Tipo não suportado
-    return "Este tipo de arquivo não é suportado para resumo automático.";
+    // 🧠 Fallback: tentar ler qualquer arquivo como texto
+    try {
+      const buffer = fs.readFileSync(caminho);
+      const textoBruto = buffer.toString("utf8").slice(0, 2000);
+
+      const resultado = await modelo.generateContent({
+        contents: [
+          {
+            parts: [
+              {
+                text: `Resuma este conteúdo técnico (mesmo que tenha símbolos, código ou formatação). Somente a resposta:\n\n${textoBruto}`,
+              },
+            ],
+          },
+        ],
+      });
+
+      const resposta = await resultado.response;
+      return (await resposta.text()).trim();
+    } catch (fallbackErr) {
+      return "❌ Mesmo forçando como texto, não foi possível interpretar este arquivo.";
+    }
   } catch (err) {
     console.error("Erro ao gerar resumo:", err.message);
     return "Não foi possível gerar o resumo. Tente novamente mais tarde.";
